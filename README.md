@@ -82,6 +82,8 @@ After deployment, verify `https://<your-vercel-domain>/api/health` returns HTTP 
 npx vercel@latest dev --local
 ```
 
+On Windows, if the Vercel CLI reports `EPERM` while creating symlinks in its cache, enable Windows Developer Mode or use a terminal with symlink permissions, then retry. This local CLI limitation does not affect the frontend production build.
+
 Keep all backend secrets in Vercel's environment settings. `VITE_API_URL` is optional; the default `/api` works for both the Vercel shared domain and the Vite development proxy.
 
 ## Upload changes to GitHub
