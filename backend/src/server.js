@@ -20,13 +20,16 @@ if (isProduction && process.env.JWT_SECRET.length < 32) {
 }
 
 const configuredOrigins = process.env.CLIENT_URL || 'http://localhost:5173';
-const allowedOrigins = configuredOrigins.split(',').map(value => {
+const allowedOrigins = new Set(configuredOrigins.split(',').map(value => {
   try {
     return new URL(value.trim()).origin;
   } catch {
     throw new Error(`Invalid CLIENT_URL origin: ${value}`);
   }
-});
+}));
+for (const host of [process.env.VERCEL_URL, process.env.VERCEL_PROJECT_PRODUCTION_URL]) {
+  if (host) allowedOrigins.add(new URL(host.includes('://') ? host : `https://${host}`).origin);
+}
 
 const app = express();
 if (isProduction) app.set('trust proxy', 1);
@@ -35,7 +38,7 @@ app.use(helmet({
 }));
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    if (!origin || allowedOrigins.has(origin)) return callback(null, true);
     const error = new Error(`Origin ${origin} is not allowed by CORS`);
     error.status = 403;
     callback(error);

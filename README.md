@@ -7,15 +7,16 @@ CampusFind is a full-stack lost-and-found portal for campus communities. It incl
 - Node.js 22 LTS and npm
 - MongoDB Atlas project and database user
 - Cloudinary account for hosted image uploads (optional; required to upload photos)
-- GitHub account, plus Vercel and Render accounts for deployment
+- GitHub account and Vercel account for deployment (Vercel Services are currently in Beta)
 
 ## Project layout
 
 ```text
 CampusFind/
+  vercel.json
   backend/   Express API, Mongoose models, auth, reports, admin
   frontend/  React/Vite application
-  render.yaml
+  render.yaml   Optional Render deployment configuration
 ```
 
 ## Run locally on Windows 11
@@ -55,26 +56,33 @@ CampusFind/
 
 All newly registered users start as students. To grant admin access, first register the intended account, then use MongoDB Atlas Data Explorer on the `campusfind.users` collection to update only that account's `role` field to `admin`. Do not add a public admin-creation endpoint or put privileged credentials in the frontend.
 
-## Deploy the backend to Render
+## Deploy frontend and API together on Vercel
 
-1. Push the project to GitHub and connect that repository to Render using the included `render.yaml` Blueprint.
-2. In the Render service's Environment settings, set:
-   - `MONGODB_URI`: your Atlas connection string (backend only)
-   - `JWT_SECRET`: a private random value of at least 32 characters
-   - `CLIENT_URL`: the exact Vercel site origin, with no path (for example `https://your-site.vercel.app`)
-   - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET`: values from Cloudinary if image uploads are needed
-3. In Atlas Network Access, allow connections from Render. Restrict this to Render's outbound IPs where available; if using a provider plan with dynamic outbound IPs, use an appropriate network rule and a strong database-user password.
-4. Deploy and wait for Render's health check. Your API URL will look like `https://<service-name>.onrender.com`; verify `https://<service-name>.onrender.com/api/health` returns HTTP 200 and `"database":"connected"`.
+The root `vercel.json` declares two services in one Vercel project:
 
-Render uses `npm ci`, `npm start`, and its assigned `PORT`. Do not expose backend environment values in Vercel or commit them to GitHub.
+- `campusfind-api`: Express service rooted at `backend`, built with `npm ci`, publicly routed under `/api/*`.
+- `frontend`: Vite service rooted at `frontend`, publicly routed for every other path. Its service-level rewrite sends client-side routes to the Vite SPA entry.
 
-## Deploy the frontend to Vercel
+Vercel Services are currently in Beta. Connect the GitHub repository to Vercel as a project using the repository root; do not set the project root to `frontend`, because the root `vercel.json` owns both services.
 
-1. Import the same GitHub repository into Vercel and set the project Root Directory to `frontend`.
-2. Use `npm run build` as the build command and `dist` as the output directory.
-3. In Vercel Project Settings → Environment Variables, set `VITE_API_URL` to `https://<service-name>.onrender.com/api`.
-4. Deploy. Copy the resulting Vercel origin into the Render `CLIENT_URL` setting, then redeploy/restart the backend. The Vercel SPA rewrite is configured in `frontend/vercel.json`.
-5. Check the frontend and API in a browser. Do not share deployment links until both services are deployed and verified.
+Set these project environment variables in Vercel for the backend runtime:
+
+- `MONGODB_URI`: MongoDB Atlas connection string
+- `JWT_SECRET`: private random value of at least 32 characters
+- `CLIENT_URL`: canonical Vercel production origin, with no path, for example `https://your-site.vercel.app`
+- `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`: Cloudinary values when image uploads are required
+
+The API service remains on the same origin and receives the original `/api/...` path. The browser uses `/api` as the default API base, so it reaches the API through the public rewrite; there is no server-to-server call and no service binding is needed. Vercel's `VERCEL_URL` and `VERCEL_PROJECT_PRODUCTION_URL` are also included in the backend CORS allowlist for deployment and preview origins.
+
+Allow Vercel's outbound connections in Atlas Network Access. Prefer restricting access to known egress addresses where your Vercel plan supports them; if a broad network rule is necessary, use a strong database-user password and least-privilege database permissions.
+
+After deployment, verify `https://<your-vercel-domain>/api/health` returns HTTP 200 and `"database":"connected"`. To run all declared services locally through Vercel's router, use a current Vercel CLI:
+
+```powershell
+npx vercel@latest dev --local
+```
+
+Keep all backend secrets in Vercel's environment settings. `VITE_API_URL` is optional; the default `/api` works for both the Vercel shared domain and the Vite development proxy.
 
 ## Upload changes to GitHub
 
@@ -112,6 +120,6 @@ Protected API requests use `Authorization: Bearer <token>`. Report images are se
 
 ## Production checks
 
-- Confirm Render `/api/health` returns HTTP 200 with the database connected.
+- Confirm Vercel `/api/health` returns HTTP 200 with the database connected.
 - From the deployed frontend, test account registration/login/logout, lost/found reporting, image upload (if configured), search/filtering, report editing/deletion/return status, and admin access.
 - Confirm invalid credentials are rejected and no `.env` file or secret is present in the GitHub repository.
