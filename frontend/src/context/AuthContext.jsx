@@ -1,8 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
+import { isDemoToken } from '../services/demo';
 const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => { try { return JSON.parse(localStorage.getItem('campusfind_user')); } catch { return null; } });
+  const [demoMode, setDemoMode] = useState(() => localStorage.getItem('campusfind_demo_mode') === 'true');
   const [loading, setLoading] = useState(true);
   const save = useCallback(data => {
     localStorage.setItem('campusfind_token', data.token);
@@ -14,9 +16,14 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('campusfind_user');
     setUser(null);
   }, []);
+  const enableDemoMode = useCallback(() => {
+    localStorage.setItem('campusfind_demo_mode', 'true');
+    setDemoMode(true);
+  }, []);
 
   useEffect(() => {
-    if (!localStorage.getItem('campusfind_token')) {
+    const token = localStorage.getItem('campusfind_token');
+    if (!token || isDemoToken(token)) {
       setLoading(false);
       return undefined;
     }
@@ -38,7 +45,7 @@ export function AuthProvider({ children }) {
     return () => { active = false; };
   }, [logout]);
 
-  const value = useMemo(() => ({ user, loading, save, logout }), [user, loading, save, logout]);
+  const value = useMemo(() => ({ user, loading, demoMode, save, logout, enableDemoMode }), [user, loading, demoMode, save, logout, enableDemoMode]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
