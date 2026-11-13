@@ -1,0 +1,10 @@
+import { Router } from 'express';
+import { overview, usersList, deleteUser } from '../controllers/adminController.js';
+import { protect, adminOnly } from '../middleware/auth.js';
+import asyncHandler from '../middleware/asyncHandler.js';
+const router = Router();
+router.use(asyncHandler(protect), adminOnly);
+router.get('/overview', asyncHandler(overview));
+router.get('/users', asyncHandler(usersList));
+router.delete('/users/:id', asyncHandler(deleteUser));
+export default router;

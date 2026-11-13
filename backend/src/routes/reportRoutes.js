@@ -1,0 +1,14 @@
+import { Router } from 'express';
+import { listReports, getReport, createReport, updateReport, deleteReport, markReturned, myReports } from '../controllers/reportController.js';
+import { protect } from '../middleware/auth.js';
+import upload from '../middleware/upload.js';
+import asyncHandler from '../middleware/asyncHandler.js';
+const router = Router();
+router.get('/', asyncHandler(listReports));
+router.get('/mine', asyncHandler(protect), asyncHandler(myReports));
+router.get('/:id', asyncHandler(getReport));
+router.post('/', asyncHandler(protect), upload.single('image'), asyncHandler(createReport));
+router.put('/:id', asyncHandler(protect), upload.single('image'), asyncHandler(updateReport));
+router.patch('/:id/returned', asyncHandler(protect), asyncHandler(markReturned));
+router.delete('/:id', asyncHandler(protect), asyncHandler(deleteReport));
+export default router;
